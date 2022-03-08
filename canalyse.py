@@ -18,6 +18,8 @@ class Canalyse:
             "read": ["filename"],
             "save": ["dataframe", "filename"],
             "play": ["channel", "dataframe"],
+            "sql": ["query"],
+            "playmsg": ["channel", "message"],
         }
 
     def scan(self, channel, timeline):
@@ -126,7 +128,8 @@ class Canalyse:
             return False
         return True
 
-    def execute_func(self,func,args):
+    def execute_func(self, func, args):
+
         if func == "scan" and self.check_func_args(func, args):
             return self.scan(self.evaluate(args[0]), self.evaluate(args[1]))
         elif func == "read" and self.check_func_args(func, args):
@@ -140,7 +143,7 @@ class Canalyse:
         elif func == "playmsg" and self.check_func_args(func, args):
             return self.playmsg(self.evaluate(args[0]), self.evaluate(args[1]))
 
-    def evaluate_var(self,token):
+    def evaluate_var(self, token):
         if token in self.builtin:
             print(f"function {token} requires arguments")
         elif token in self.variables:
@@ -154,15 +157,11 @@ class Canalyse:
         elif token[0] == "'" and token[-1] == "'":
             return str(token[1:-1])
         elif (
-                "+" in token
-                or "-" in token
-                or "*" in token
-                or "/" in token
-                or "%" in token
-            ):
+            "+" in token or "-" in token or "*" in token or "/" in token or "%" in token
+        ):
             return eval(token, self.variables)
-    
-    def parse_func(self,code):
+
+    def parse_func(self, code):
         cstk = 0
         qstk = 0
         dqstk = 0
@@ -175,9 +174,10 @@ class Canalyse:
             cstk += tokens[i].count("(")
             cstk -= tokens[i].count(")")
             if cstk == 0 and qstk == 0 and dqstk == 0:
-                args.append(",".join(tokens[start: i + 1]))
+                args.append(",".join(tokens[start : i + 1]))
                 start = i + 1
         return args
+
     def evaluate(self, code):
         tokens = code.strip().split("(")
         if len(tokens) == 0:
@@ -188,9 +188,8 @@ class Canalyse:
             code = "(".join(tokens[1:]).rstrip(")")
             func = tokens[0]
             args = self.parse_func(code)
-            
-            return self.execute_func(func,args)
-            
+
+            return self.execute_func(func, args)
 
     def repl(self, code):
         code = code.strip()

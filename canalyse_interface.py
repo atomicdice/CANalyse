@@ -80,7 +80,6 @@ class Interface:
             self.ide()
         elif func == "telegram":
             self.telegram()
-            
 
     def ide(self):
         os.system("clear")
