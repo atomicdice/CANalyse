@@ -38,7 +38,7 @@ class Canalyse:
                     data.at[data.shape[0]] = [
                         msg.timestamp,
                         msg.channel,
-                        msg.arbitration_id,
+                        str(hex(msg.arbitration_id)[2:]),
                         mdata,
                     ]
             return data
@@ -64,21 +64,23 @@ class Canalyse:
 
     def save(self, df, filename):
         extension = filename.split(".")[-1]
+        
         if extension == "csv":
             df.to_csv(filename, index=False)
         elif extension == "log":
-            col = df.columns()
+            
+            col = df.columns
             for c in ["timestamp", "channel", "id", "data"]:
                 if c not in col:
                     pass  # c not available to store in log file
                     print(f"{c} column is needed to store as log")
-
+            
             with open(filename, "w+") as file:
                 for i in range(df.shape[0]):
                     m = [
-                        df.loc[i, "timestamp"],
-                        df.loc[i, "channel"],
-                        df.loc[i, "id"] + "#" + df.loc[i, "data"] + "\n",
+                        str(df.loc[i, "timestamp"]),
+                        str(df.loc[i, "channel"]),
+                        str(df.loc[i, "id"]) + "#" + str(df.loc[i, "data"]) + "\n",
                     ]
                     t = " ".join(m)
                     file.write(t)
@@ -104,7 +106,13 @@ class Canalyse:
     def playmsg(self, channel, canmsg):
         bus = can.Bus(bustype=self.bustype, channel=channel)
         t = canmsg.split("#")
-        m = can.Message(arbitration_id="0x" + t[0], data="0x" + t[1])
+        hdata = t[1]
+        if len(hdata) % 2 == 1:
+            hdata = '0'+hdata
+        data = []
+        for i in range(0,len(hdata),2):
+            data.append(int('0x'+hdata[i:i+2],16))
+        m = can.Message(arbitration_id=int('0x'+t[0],16), data=data)
         bus.send(m)
 
     def sql(self, query):
@@ -123,8 +131,8 @@ class Canalyse:
 
     def check_func_args(self, func, args):
         if len(self.builtin[func]) != len(args):
-            print(f"function {func} requires 2 arguments {len(args)} given")
-            print(f"function {func} requires {len(self.builtin[func])} arguments")
+            print(
+                f"function {func} requires {len(self.builtin[func])} arguments {len(args)} given")
             return False
         return True
 
@@ -168,9 +176,10 @@ class Canalyse:
         tokens = code.split(",")
         args = []
         start = 0
+        print(tokens)
         for i in range(len(tokens)):
-            qstk = tokens[i].count('"') % 2
-            dqstk = tokens[i].count("'") % 2
+            qstk += tokens[i].count('"') % 2
+            dqstk += tokens[i].count("'") % 2
             cstk += tokens[i].count("(")
             cstk -= tokens[i].count(")")
             if cstk == 0 and qstk == 0 and dqstk == 0:
@@ -193,6 +202,8 @@ class Canalyse:
 
     def repl(self, code):
         code = code.strip()
+        if code == '':
+            return None
         tokens = re.split("=", code)
         if len(tokens) > 1:
             tokens[0] = tokens[0].strip()

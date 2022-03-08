@@ -1,6 +1,6 @@
 ### to do:
 
-  * fix "play" option in IDE.
+  * <del>fix "play" option in IDE.
   * savesessions /log files.
   * can user import the same files through telegram.
   * check the database option like before.
