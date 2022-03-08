@@ -97,7 +97,7 @@ class Interface:
                 else:
                     try:
                         output = cn.repl(code)
-                        if output != None:
+                        if output is not None:
                             print(output)
                         history.append(code)
                     except KeyboardInterrupt:

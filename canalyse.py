@@ -64,7 +64,6 @@ class Canalyse:
         extension = filename.split(".")[-1]
         if extension == "csv":
             df.to_csv(filename, index=False)
-            return None
         elif extension == "log":
             col = df.columns()
             for c in ["timestamp", "channel", "id", "data"]:
@@ -81,7 +80,6 @@ class Canalyse:
                     ]
                     t = " ".join(m)
                     file.write(t)
-            return None
 
             pass
         else:
@@ -113,7 +111,6 @@ class Canalyse:
             return df
         except Exception as e:
             print(e)
-            return None
 
     def isfloat(self, string: str):
         try:
@@ -147,7 +144,6 @@ class Canalyse:
         if token in self.builtin:
             print(f"function {token} requires arguments")
         elif token in self.variables:
-            print(token)
             return self.variables[token]
         elif token.isdigit():
             return int(token)
@@ -208,7 +204,6 @@ class Canalyse:
                 print(f"variable should not start with special characters")
             else:
                 self.variables[tokens[0]] = self.evaluate("=".join(tokens[1:]))
-                return None
         else:
             return self.evaluate(code)
 
