@@ -22,6 +22,8 @@ class Canalyse:
             "playmsg": ["channel", "message"],
         }
 
+        self.history = []
+
     def scan(self, channel, timeline):
         try:
             bus = can.Bus(bustype=self.bustype, channel=channel)
@@ -34,7 +36,14 @@ class Canalyse:
             while time.time() < t_end:
                 msg = bus.recv(1)
                 if msg is not None:
-                    mdata = "".join([str(hex(d))[2:] for d in msg.data])
+                    mdata = "".join(
+                        [
+                            str(hex(d))[2:]
+                            if len(str(hex(d))) == 4
+                            else "0" + str(hex(d))[2:]
+                            for d in msg.data
+                        ]
+                    )
                     data.at[data.shape[0]] = [
                         msg.timestamp,
                         msg.channel,
@@ -56,6 +65,7 @@ class Canalyse:
             for line in log:
                 try:
                     res = re.split("#| ", line)
+                    res[0] = res[0].lstrip("(").rstrip(")")
                     res[3] = res[3].strip("\n")
                     data.at[data.shape[0]] = res
                 except Exception as e:
@@ -64,21 +74,25 @@ class Canalyse:
 
     def save(self, df, filename):
         extension = filename.split(".")[-1]
-        
+
         if extension == "csv":
             df.to_csv(filename, index=False)
         elif extension == "log":
-            
+
             col = df.columns
             for c in ["timestamp", "channel", "id", "data"]:
                 if c not in col:
                     pass  # c not available to store in log file
                     print(f"{c} column is needed to store as log")
-            
+
             with open(filename, "w+") as file:
                 for i in range(df.shape[0]):
+                    t = str(df.loc[i, "timestamp"])
+                    if len(t) < 17:
+                        t = "0" * (17 - len(t)) + t
+                    t = "(" + t + ")"
                     m = [
-                        str(df.loc[i, "timestamp"]),
+                        t,
                         str(df.loc[i, "channel"]),
                         str(df.loc[i, "id"]) + "#" + str(df.loc[i, "data"]) + "\n",
                     ]
@@ -89,6 +103,69 @@ class Canalyse:
         else:
             pass  # file format not supported
             print(f"{extension} not supported")
+
+    def exportvardata(self, filepath, projectname):
+        projectpath = os.path.join(filepath, projectname)
+        if os.path.isdir(projectpath):
+            mode = "a+"
+        else:
+            mode = "w+"
+
+            os.mkdir(projectpath)
+        datafilepath = os.path.join(projectpath, projectname + ".data.clyse")
+        with open(datafilepath, mode) as datafile:
+            for var in self.variables:
+                val = self.variables[var]
+                if type(val) == pd.DataFrame:
+                    col = val.columns
+                    seq = True
+                    for c in ["timestamp", "channel", "id", "data"]:
+                        if c not in col:
+                            seq = False
+                            break
+                    if seq:
+                        f = "logs"
+                        e = "log"
+                    else:
+                        f = "tables"
+                        e = "csv"
+                    filename = os.path.join(filepath, projectname, f, var + "." + e)
+                    self.save(self.variables[var], filename)
+                    datafile.write(f"{var} = read({filename})\n")
+                else:
+                    datafile.write(f"{var} = {val}")
+
+    def exportcodedata(self, filepath, projectname):
+        projectpath = os.path.join(filepath, projectname)
+        if os.path.isdir(projectpath):
+            mode = "a+"
+        else:
+            mode = "w+"
+
+            os.mkdir(projectpath)
+        codefilepath = os.path.join(projectpath, projectname + ".action.clyse")
+        with open(codefilepath, mode) as codefile:
+            for code in self.history[:-1]:
+                codefile.write(f"{code}\n")
+
+    def importt(self, projectpath):
+        projectname = projectpath.split("/")[-1]
+        datafilepath = os.path.join(projectpath, projectname + "data.clyse")
+        if os.path.isfile(datafilepath):
+            with open(datafilepath, "r+") as datafile:
+                for line in datafile.readlines():
+                    self.repl(line)
+
+        else:
+            print("Invalid project path")
+
+    def run(self, projectpath):
+        projectname = projectpath.split("/")[-1]
+        actionfilepath = os.path.join(projectpath, projectname + "action.clyse")
+        if os.path.isfile(actionfilepath):
+            with open(actionfilepath, "r+") as datafile:
+                for line in datafile.readlines():
+                    self.repl(line)
 
     def play(self, channel, df):
         try:
@@ -108,11 +185,13 @@ class Canalyse:
         t = canmsg.split("#")
         hdata = t[1]
         if len(hdata) % 2 == 1:
-            hdata = '0'+hdata
+            hdata = "0" + hdata
         data = []
-        for i in range(0,len(hdata),2):
-            data.append(int('0x'+hdata[i:i+2],16))
-        m = can.Message(arbitration_id=int('0x'+t[0],16), data=data)
+        for i in range(0, len(hdata), 2):
+            data.append(int("0x" + hdata[i : i + 2], 16))
+        m = can.Message(
+            arbitration_id=int("0x" + t[0], 16), data=data, is_extended_id=False
+        )
         bus.send(m)
 
     def sql(self, query):
@@ -132,7 +211,8 @@ class Canalyse:
     def check_func_args(self, func, args):
         if len(self.builtin[func]) != len(args):
             print(
-                f"function {func} requires {len(self.builtin[func])} arguments {len(args)} given")
+                f"function {func} requires {len(self.builtin[func])} arguments {len(args)} given"
+            )
             return False
         return True
 
@@ -176,7 +256,6 @@ class Canalyse:
         tokens = code.split(",")
         args = []
         start = 0
-        print(tokens)
         for i in range(len(tokens)):
             qstk += tokens[i].count('"') % 2
             dqstk += tokens[i].count("'") % 2
@@ -194,17 +273,19 @@ class Canalyse:
         elif len(tokens) == 1:
             return self.evaluate_var(tokens[0])
         else:
-            code = "(".join(tokens[1:]).rstrip(")")
+            code = "(".join(tokens[1:])
+            if code[-1] == ")":
+                code = code[:-1]
             func = tokens[0]
             args = self.parse_func(code)
-
             return self.execute_func(func, args)
 
     def repl(self, code):
         code = code.strip()
-        if code == '':
+        if code == "":
             return None
         tokens = re.split("=", code)
+        self.history.append(code)
         if len(tokens) > 1:
             tokens[0] = tokens[0].strip()
             if len(tokens[0].split(" ")) > 1 or not tokens[0].isalnum():

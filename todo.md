@@ -1,7 +1,9 @@
 ### to do:
 
   * <del>fix "play" option in IDE.
-  * savesessions /log files.
+  * <del>savesessions /log files.
+  * test savesessions/runsessions
+  * using brackets and = and , when dictly using string
   * can user import the same files through telegram.
   * check the database option like before.
 
