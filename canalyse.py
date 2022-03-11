@@ -1,5 +1,6 @@
 from distutils import extension
 import os
+from traceback import print_tb
 import pandas as pd
 import can
 from can import Bus, BusState, Logger, LogReader, MessageSync
@@ -20,6 +21,9 @@ class Canalyse:
             "play": ["channel", "dataframe"],
             "sql": ["query"],
             "playmsg": ["channel", "message"],
+            "import": ["projectpath"],
+            "export": ["projectpath"],
+            "run": ["projectpath"],
         }
 
         self.history = []
@@ -112,8 +116,11 @@ class Canalyse:
             mode = "w+"
 
             os.mkdir(projectpath)
+            os.mkdir(os.path.join(projectpath, "logs"))
+            os.mkdir(os.path.join(projectpath, "tables"))
         datafilepath = os.path.join(projectpath, projectname + ".data.clyse")
         with open(datafilepath, mode) as datafile:
+            print(datafilepath)
             for var in self.variables:
                 val = self.variables[var]
                 if type(val) == pd.DataFrame:
@@ -131,9 +138,11 @@ class Canalyse:
                         e = "csv"
                     filename = os.path.join(filepath, projectname, f, var + "." + e)
                     self.save(self.variables[var], filename)
-                    datafile.write(f"{var} = read({filename})\n")
+                    datafile.write(f"{var} = read('{filename}')\n")
                 else:
-                    datafile.write(f"{var} = {val}")
+                    if type(val) == str:
+                        val = '"' + val + '"'
+                    datafile.write(f"{var} = {val}\n")
 
     def exportcodedata(self, filepath, projectname):
         projectpath = os.path.join(filepath, projectname)
@@ -148,9 +157,17 @@ class Canalyse:
             for code in self.history[:-1]:
                 codefile.write(f"{code}\n")
 
+    def export(self, projectpath):
+        projectname = projectpath.split("/")[-1]
+        filepath = "/".join(projectpath.split("/")[:-1])
+        print(projectpath)
+        self.exportvardata(filepath, projectname)
+        self.exportcodedata(filepath, projectname)
+
     def importt(self, projectpath):
         projectname = projectpath.split("/")[-1]
-        datafilepath = os.path.join(projectpath, projectname + "data.clyse")
+        datafilepath = os.path.join(projectpath, projectname + ".data.clyse")
+        print(datafilepath)
         if os.path.isfile(datafilepath):
             with open(datafilepath, "r+") as datafile:
                 for line in datafile.readlines():
@@ -161,7 +178,7 @@ class Canalyse:
 
     def run(self, projectpath):
         projectname = projectpath.split("/")[-1]
-        actionfilepath = os.path.join(projectpath, projectname + "action.clyse")
+        actionfilepath = os.path.join(projectpath, projectname + ".action.clyse")
         if os.path.isfile(actionfilepath):
             with open(actionfilepath, "r+") as datafile:
                 for line in datafile.readlines():
@@ -217,7 +234,6 @@ class Canalyse:
         return True
 
     def execute_func(self, func, args):
-
         if func == "scan" and self.check_func_args(func, args):
             return self.scan(self.evaluate(args[0]), self.evaluate(args[1]))
         elif func == "read" and self.check_func_args(func, args):
@@ -230,6 +246,14 @@ class Canalyse:
             return self.play(self.evaluate(args[0]), self.evaluate(args[1]))
         elif func == "playmsg" and self.check_func_args(func, args):
             return self.playmsg(self.evaluate(args[0]), self.evaluate(args[1]))
+        elif func == "import" and self.check_func_args(func, args):
+            return self.importt(self.evaluate(args[0]))
+        elif func == "export" and self.check_func_args(func, args):
+            return self.export(self.evaluate(args[0]))
+        elif func == "run" and self.check_func_args(func, args):
+            return self.run(self.evaluate(args[0]))
+        else:
+            print(f"function {func} is not defined")
 
     def evaluate_var(self, token):
         if token in self.builtin:
@@ -249,7 +273,7 @@ class Canalyse:
         ):
             return eval(token, self.variables)
 
-    def do_split(self,code,element):
+    def do_split(self, code, element):
         dqsk = 0
         qk = 0
         ck = 0
@@ -262,10 +286,10 @@ class Canalyse:
             elif code[i] == '"':
                 dqsk += 1
                 dqsk %= 2
-            
+
             elif qk == 0 and dqsk == 0 and ck == 0 and code[i] == element:
                 result.append(code[start:i])
-                start = i+1
+                start = i + 1
             elif code[i] == "(":
                 ck += 1
             elif code[i] == ")":
@@ -273,10 +297,9 @@ class Canalyse:
         result.append(code[start:])
         return result
 
-
     def evaluate(self, code):
         code = code.strip()
-        tokens = self.do_split(code,"(")
+        tokens = self.do_split(code, "(")
         print(tokens)
         if len(tokens) == 0:
             pass
@@ -296,7 +319,7 @@ class Canalyse:
         if code == "":
             return None
 
-        tokens = self.do_split(code,"=")
+        tokens = self.do_split(code, "=")
         print(tokens)
         self.history.append(code)
         if len(tokens) > 1:
