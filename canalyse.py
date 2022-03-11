@@ -26,7 +26,7 @@ class Canalyse:
 
     def scan(self, channel, timeline):
         try:
-            bus = can.Bus(bustype=self.bustype, channel=channel)
+            bus = can.Bus(bustype=self.bustype, channel=channel)  # type: ignore
             data = pd.DataFrame(columns=["timestamp", "channel", "id", "data"])
             if int(timeline) != 0:
                 t_end = time.time() + int(timeline)
@@ -169,7 +169,7 @@ class Canalyse:
 
     def play(self, channel, df):
         try:
-            bus = can.Bus(bustype=self.bustype, channel=channel)
+            bus = can.Bus(bustype=self.bustype, channel=channel)  # type: ignore
             self.save(df, "play_cache.log")
             reader = LogReader("play_cache.log")
             in_sync = MessageSync(reader)
@@ -181,7 +181,7 @@ class Canalyse:
             print(e)
 
     def playmsg(self, channel, canmsg):
-        bus = can.Bus(bustype=self.bustype, channel=channel)
+        bus = can.Bus(bustype=self.bustype, channel=channel)  # type: ignore
         t = canmsg.split("#")
         hdata = t[1]
         if len(hdata) % 2 == 1:
@@ -249,25 +249,35 @@ class Canalyse:
         ):
             return eval(token, self.variables)
 
-    def parse_func(self, code):
-        cstk = 0
-        qstk = 0
-        dqstk = 0
-        tokens = code.split(",")
-        args = []
+    def do_split(self,code,element):
+        dqsk = 0
+        qk = 0
+        ck = 0
+        result = []
         start = 0
-        for i in range(len(tokens)):
-            qstk += tokens[i].count('"') % 2
-            dqstk += tokens[i].count("'") % 2
-            cstk += tokens[i].count("(")
-            cstk -= tokens[i].count(")")
-            if cstk == 0 and qstk == 0 and dqstk == 0:
-                args.append(",".join(tokens[start : i + 1]))
-                start = i + 1
-        return args
+        for i in range(len(code)):
+            if code[i] == "'":
+                qk += 1
+                qk %= 2
+            elif code[i] == '"':
+                dqsk += 1
+                dqsk %= 2
+            
+            elif qk == 0 and dqsk == 0 and ck == 0 and code[i] == element:
+                result.append(code[start:i])
+                start = i+1
+            elif code[i] == "(":
+                ck += 1
+            elif code[i] == ")":
+                ck += 1
+        result.append(code[start:])
+        return result
+
 
     def evaluate(self, code):
-        tokens = code.strip().split("(")
+        code = code.strip()
+        tokens = self.do_split(code,"(")
+        print(tokens)
         if len(tokens) == 0:
             pass
         elif len(tokens) == 1:
@@ -277,14 +287,17 @@ class Canalyse:
             if code[-1] == ")":
                 code = code[:-1]
             func = tokens[0]
-            args = self.parse_func(code)
+            print(code)
+            args = self.do_split(code, ",")
             return self.execute_func(func, args)
 
     def repl(self, code):
         code = code.strip()
         if code == "":
             return None
-        tokens = re.split("=", code)
+
+        tokens = self.do_split(code,"=")
+        print(tokens)
         self.history.append(code)
         if len(tokens) > 1:
             tokens[0] = tokens[0].strip()
