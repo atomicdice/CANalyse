@@ -1,6 +1,5 @@
 from distutils import extension
 import os
-from traceback import print_tb
 import pandas as pd
 import can
 from can import Bus, BusState, Logger, LogReader, MessageSync
@@ -27,6 +26,14 @@ class Canalyse:
         }
 
         self.history = []
+        self.goterror = False
+
+    def error(self,reason):
+        print(reason)
+        if not self.goterror:
+            self.history.pop()
+            self.goterror = True
+        
 
     def scan(self, channel, timeline):
         try:
@@ -56,7 +63,7 @@ class Canalyse:
                     ]
             return data
         except Exception as e:
-            print(e)
+            self.error(e)
 
     def read(self, filename):
         if filename.split(".")[-1] == "csv":
@@ -73,7 +80,7 @@ class Canalyse:
                     res[3] = res[3].strip("\n")
                     data.at[data.shape[0]] = res
                 except Exception as e:
-                    print(e)
+                    self.error(e)
         return data
 
     def save(self, df, filename):
@@ -87,7 +94,7 @@ class Canalyse:
             for c in ["timestamp", "channel", "id", "data"]:
                 if c not in col:
                     pass  # c not available to store in log file
-                    print(f"{c} column is needed to store as log")
+                    self.error(f"{c} column is needed to store as log")
 
             with open(filename, "w+") as file:
                 for i in range(df.shape[0]):
@@ -106,7 +113,7 @@ class Canalyse:
             pass
         else:
             pass  # file format not supported
-            print(f"{extension} not supported")
+            self.error(f"{extension} not supported")
 
     def exportvardata(self, filepath, projectname):
         projectpath = os.path.join(filepath, projectname)
@@ -120,7 +127,6 @@ class Canalyse:
             os.mkdir(os.path.join(projectpath, "tables"))
         datafilepath = os.path.join(projectpath, projectname + ".data.clyse")
         with open(datafilepath, mode) as datafile:
-            print(datafilepath)
             for var in self.variables:
                 val = self.variables[var]
                 if type(val) == pd.DataFrame:
@@ -160,21 +166,19 @@ class Canalyse:
     def export(self, projectpath):
         projectname = projectpath.split("/")[-1]
         filepath = "/".join(projectpath.split("/")[:-1])
-        print(projectpath)
         self.exportvardata(filepath, projectname)
         self.exportcodedata(filepath, projectname)
 
     def importt(self, projectpath):
         projectname = projectpath.split("/")[-1]
         datafilepath = os.path.join(projectpath, projectname + ".data.clyse")
-        print(datafilepath)
         if os.path.isfile(datafilepath):
             with open(datafilepath, "r+") as datafile:
                 for line in datafile.readlines():
                     self.repl(line)
 
         else:
-            print("Invalid project path")
+            self.error("Invalid project path")
 
     def run(self, projectpath):
         projectname = projectpath.split("/")[-1]
@@ -195,7 +199,7 @@ class Canalyse:
                     continue
                 bus.send(m)
         except Exception as e:
-            print(e)
+            self.error(e)
 
     def playmsg(self, channel, canmsg):
         bus = can.Bus(bustype=self.bustype, channel=channel)  # type: ignore
@@ -216,7 +220,7 @@ class Canalyse:
             df = ps.sqldf(query, self.variables)
             return df
         except Exception as e:
-            print(e)
+            self.error(e)
 
     def isfloat(self, string: str):
         try:
@@ -227,7 +231,7 @@ class Canalyse:
 
     def check_func_args(self, func, args):
         if len(self.builtin[func]) != len(args):
-            print(
+            self.error(
                 f"function {func} requires {len(self.builtin[func])} arguments {len(args)} given"
             )
             return False
@@ -253,11 +257,11 @@ class Canalyse:
         elif func == "run" and self.check_func_args(func, args):
             return self.run(self.evaluate(args[0]))
         else:
-            print(f"function {func} is not defined")
+            self.error(f"function {func} is not defined")
 
     def evaluate_var(self, token):
         if token in self.builtin:
-            print(f"function {token} requires arguments")
+            self.error(f"function {token} requires arguments")
         elif token in self.variables:
             return self.variables[token]
         elif token.isdigit():
@@ -300,7 +304,6 @@ class Canalyse:
     def evaluate(self, code):
         code = code.strip()
         tokens = self.do_split(code, "(")
-        print(tokens)
         if len(tokens) == 0:
             pass
         elif len(tokens) == 1:
@@ -310,7 +313,6 @@ class Canalyse:
             if code[-1] == ")":
                 code = code[:-1]
             func = tokens[0]
-            print(code)
             args = self.do_split(code, ",")
             return self.execute_func(func, args)
 
@@ -320,15 +322,15 @@ class Canalyse:
             return None
 
         tokens = self.do_split(code, "=")
-        print(tokens)
+        self.goterror = False
         self.history.append(code)
         if len(tokens) > 1:
             tokens[0] = tokens[0].strip()
             if len(tokens[0].split(" ")) > 1 or not tokens[0].isalnum():
                 pass  # variable assignment error
-                print(f"{' '.join(tokens)} not defined")
+                self.error(f"{' '.join(tokens)} not defined")
             elif not tokens[0][0].isalpha():
-                print(f"variable should not start with special characters")
+                self.error(f"variable should not start with special characters")
             else:
                 self.variables[tokens[0]] = self.evaluate("=".join(tokens[1:]))
         else:
