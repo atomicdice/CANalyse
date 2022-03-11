@@ -2,7 +2,7 @@
 
   * <del>fix "play" option in IDE.
   * <del>savesessions /log files.
-  * test savesessions/runsessions
+  * <del>test savesessions/runsessions
   * <del>using brackets and = and , when dictly using string
   * can user import the same files through telegram.
   * check the database option like before.
