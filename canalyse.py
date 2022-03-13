@@ -341,7 +341,9 @@ class Canalyse:
             return self.evaluate(code)
 
     def collect_noise(self,bus):
-        print(f"Press Spacebar and start giving the signals or press 'S' to save")
+        os.system('clear')
+        print(
+            f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play")
         while True:
             msg = bus.recv(1)
             if msg is None:
@@ -374,6 +376,7 @@ class Canalyse:
                     self.playmsg(self.channel,mssg)
                 break
     def collect_signal(self,bus):
+        os.system('clear')
         print(f"Once you stop giving the signals press 'b'")
         signal_cahce =  {}
         while not self.stop:
@@ -394,7 +397,7 @@ class Canalyse:
                     self.signal = filterr
                 os.system('clear')
                 print(
-                    f"Press Spacebar and start giving the signals or press 'S' to save")
+                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play")
                 self.show_signals()
                 break
             
@@ -408,6 +411,7 @@ class Canalyse:
         while not self.stop:
             self.collect_noise(bus)
             self.collect_signal(bus)
+        
 
     def show_signals(self):
         for msghash in self.signal:
