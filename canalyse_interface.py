@@ -16,6 +16,9 @@ class Interface:
             self.menu = json.load(file)
         self.path: list[str] = []
         self.console = Console()
+        self.channel = self.menu["Settings"]["Communication channel"]
+        self.bustype = self.menu["Settings"]["Communication Interface"]
+
 
     def header(self) -> None:
         print("")
@@ -80,13 +83,13 @@ class Interface:
             self.ide()
         elif func == "telegram":
             self.telegram()
+        elif func == "smartscan":
+            self.smartscan()
 
     def ide(self):
         os.system("clear")
         self.header()
-        channel = self.menu["Settings"]["Communication channel"]
-        bustype = self.menu["Settings"]["Communication Interface"]
-        with Canalyse(channel, bustype) as cn:
+        with Canalyse(self.channel, self.bustype) as cn:
             history = []
             while True:
                 code = input("###--> ")
@@ -103,6 +106,12 @@ class Interface:
                         break
                     except Exception as e:
                         print(e)
+
+    def smartscan(self):
+        os.system("clear")
+        with Canalyse(self.channel, self.bustype) as cn:
+            cn.smartscan()
+        pass
 
     def telegram(self):
         print("under construction")

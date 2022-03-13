@@ -1,12 +1,13 @@
 from distutils import extension
 import os
+from signal import signal
 import pandas as pd
 import can
 from can import Bus, BusState, Logger, LogReader, MessageSync
 import time
 import re
 import pandasql as ps
-
+import keyboard as kd
 
 class Canalyse:
     def __init__(self, channel, bustype) -> None:
@@ -27,6 +28,9 @@ class Canalyse:
 
         self.history = []
         self.goterror = False
+
+        self.noise = {}
+        self.signal = {}
 
     def error(self,reason):
         print(reason)
@@ -335,6 +339,92 @@ class Canalyse:
                 self.variables[tokens[0]] = self.evaluate("=".join(tokens[1:]))
         else:
             return self.evaluate(code)
+
+    def collect_noise(self,bus):
+        print(f"Press Spacebar and start giving the signals or press 'S' to save")
+        while True:
+            msg = bus.recv(1)
+            if msg is None:
+                continue
+            msghash = str(msg.arbitration_id)+'#'+str(msg.data)
+            self.noise[msghash] = msg
+            if msghash in self.signal:
+                del self.signal[msghash]
+                os.system('clear')
+                print(
+                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play")
+                self.show_signals()
+            if kd.is_pressed('space'):
+                break
+            if kd.is_pressed('s'):
+                self.stop = True
+                break
+            if kd.is_pressed('p'):
+                for msghash in self.signal:
+                    msg = self.signal[msghash]
+                    mdata = "".join(
+                    [
+                        str(hex(d))[2:]
+                        if len(str(hex(d))) == 4
+                        else "0" + str(hex(d))[2:]
+                        for d in msg.data
+                    ]
+                    )
+                    mssg = str(hex(msg.arbitration_id)[2:])+'#'+mdata
+                    self.playmsg(self.channel,mssg)
+                break
+    def collect_signal(self,bus):
+        print(f"Once you stop giving the signals press 'b'")
+        signal_cahce =  {}
+        while not self.stop:
+            msg = bus.recv(1)
+            if msg is None:
+                continue
+            msghash = str(msg.arbitration_id)+'#'+str(msg.data)
+            if msghash not in self.noise:
+                signal_cahce[msghash] = msg
+            if kd.is_pressed('b'):
+                if self.signal == {}:
+                    self.signal = signal_cahce
+                else:
+                    filterr = {}
+                    for msghash in self.signal:
+                        if msghash in signal_cahce:
+                            filterr[msghash] = self.signal[msghash]
+                    self.signal = filterr
+                os.system('clear')
+                print(
+                    f"Press Spacebar and start giving the signals or press 'S' to save")
+                self.show_signals()
+                break
+            
+
+
+
+
+    def smartscan(self):
+        bus = can.Bus(bustype=self.bustype, channel=self.channel)  # type: ignore
+        self.stop = False
+        while not self.stop:
+            self.collect_noise(bus)
+            self.collect_signal(bus)
+
+    def show_signals(self):
+        for msghash in self.signal:
+            msg = self.signal[msghash]
+            mdata = "".join(
+                    [
+                        str(hex(d))[2:]
+                        if len(str(hex(d))) == 4
+                        else "0" + str(hex(d))[2:]
+                        for d in msg.data
+                    ]
+                )
+
+            print(str(hex(msg.arbitration_id)[2:])+'#'+mdata)
+        
+        
+            
 
     def __enter__(self):
         return self
