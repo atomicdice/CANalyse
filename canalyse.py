@@ -411,6 +411,7 @@ class Canalyse:
         while not self.stop:
             self.collect_noise(bus)
             self.collect_signal(bus)
+        self.save_signals()
         
 
     def show_signals(self):
@@ -426,6 +427,39 @@ class Canalyse:
                 )
 
             print(str(hex(msg.arbitration_id)[2:])+'#'+mdata)
+
+    def save_signals(self):
+        while True:
+            os.system('clear')
+            self.show_signals()
+            try:
+                filepath = input('---> ')
+                self.save_signals_as_file(filepath)
+            except:
+                pass
+
+    def save_signals_as_file(self,filepath):
+        with open(filepath,'w+') as file:
+            for msghash in self.signal:
+                msg = self.signal[msghash]
+                mdata = "".join([
+                str(hex(d))[2:]
+                if len(str(hex(d))) == 4
+                else "0" + str(hex(d))[2:]
+                for d in msg.data])
+                timestamp = str(msg.timestamp)
+                if len(timestamp) < 17:
+                    timestamp = "0" * (17 - len(timestamp)) + timestamp
+                timestamp = "(" + timestamp + ")"
+                m = [
+                        timestamp,
+                        self.channel,
+                        str(hex(msg.arbitration_id)[2:]) + "#" +
+                        mdata + "\n",
+                ]
+                message = " ".join(m)
+                file.write(message)
+                
         
         
             
