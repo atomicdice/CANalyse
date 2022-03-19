@@ -9,6 +9,7 @@ import re
 import pandasql as ps
 import keyboard as kd
 
+
 class Canalyse:
     def __init__(self, channel, bustype) -> None:
         self.variables = {}
@@ -32,12 +33,11 @@ class Canalyse:
         self.noise = {}
         self.signal = {}
 
-    def error(self,reason):
+    def error(self, reason):
         print(reason)
         if not self.goterror:
             self.history.pop()
             self.goterror = True
-        
 
     def scan(self, channel, timeline):
         try:
@@ -48,23 +48,29 @@ class Canalyse:
             else:
                 t_end = time.time() + 600  # max time limit.
 
+            msgs = []
+
             while time.time() < t_end:
                 msg = bus.recv(1)
                 if msg is not None:
-                    mdata = "".join(
-                        [
-                            str(hex(d))[2:]
-                            if len(str(hex(d))) == 4
-                            else "0" + str(hex(d))[2:]
-                            for d in msg.data
-                        ]
-                    )
-                    data.at[data.shape[0]] = [
-                        msg.timestamp,
-                        msg.channel,
-                        str(hex(msg.arbitration_id)[2:]),
-                        mdata,
+                    msgs.append(msg)
+
+            for i in range(len(msgs)):
+                msg = msgs[i]
+                mdata = "".join(
+                    [
+                        str(hex(d))[2:]
+                        if len(str(hex(d))) == 4
+                        else "0" + str(hex(d))[2:]
+                        for d in msg.data
                     ]
+                )
+                data.at[data.shape[0]] = [
+                    msg.timestamp,
+                    msg.channel,
+                    str(hex(msg.arbitration_id)[2:]),
+                    mdata,
+                ]
             return data
         except Exception as e:
             self.error(e)
@@ -340,53 +346,56 @@ class Canalyse:
         else:
             return self.evaluate(code)
 
-    def collect_noise(self,bus):
-        os.system('clear')
+    def collect_noise(self, bus):
+        os.system("clear")
         print(
-            f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play")
+            f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play"
+        )
         while True:
             msg = bus.recv(1)
             if msg is None:
                 continue
-            msghash = str(msg.arbitration_id)+'#'+str(msg.data)
+            msghash = str(msg.arbitration_id) + "#" + str(msg.data)
             self.noise[msghash] = msg
             if msghash in self.signal:
                 del self.signal[msghash]
-                os.system('clear')
+                os.system("clear")
                 print(
-                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play")
+                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play"
+                )
                 self.show_signals()
-            if kd.is_pressed('space'):
+            if kd.is_pressed("space"):
                 break
-            if kd.is_pressed('s'):
+            if kd.is_pressed("s"):
                 self.stop = True
                 break
-            if kd.is_pressed('p'):
+            if kd.is_pressed("p"):
                 for msghash in self.signal:
                     msg = self.signal[msghash]
                     mdata = "".join(
-                    [
-                        str(hex(d))[2:]
-                        if len(str(hex(d))) == 4
-                        else "0" + str(hex(d))[2:]
-                        for d in msg.data
-                    ]
+                        [
+                            str(hex(d))[2:]
+                            if len(str(hex(d))) == 4
+                            else "0" + str(hex(d))[2:]
+                            for d in msg.data
+                        ]
                     )
-                    mssg = str(hex(msg.arbitration_id)[2:])+'#'+mdata
-                    self.playmsg(self.channel,mssg)
+                    mssg = str(hex(msg.arbitration_id)[2:]) + "#" + mdata
+                    self.playmsg(self.channel, mssg)
                 break
-    def collect_signal(self,bus):
-        os.system('clear')
+
+    def collect_signal(self, bus):
+        os.system("clear")
         print(f"Once you stop giving the signals press 'b'")
-        signal_cahce =  {}
+        signal_cahce = {}
         while not self.stop:
             msg = bus.recv(1)
             if msg is None:
                 continue
-            msghash = str(msg.arbitration_id)+'#'+str(msg.data)
+            msghash = str(msg.arbitration_id) + "#" + str(msg.data)
             if msghash not in self.noise:
                 signal_cahce[msghash] = msg
-            if kd.is_pressed('b'):
+            if kd.is_pressed("b"):
                 if self.signal == {}:
                     self.signal = signal_cahce
                 else:
@@ -395,15 +404,12 @@ class Canalyse:
                         if msghash in signal_cahce:
                             filterr[msghash] = self.signal[msghash]
                     self.signal = filterr
-                os.system('clear')
+                os.system("clear")
                 print(
-                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play")
+                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play"
+                )
                 self.show_signals()
                 break
-            
-
-
-
 
     def smartscan(self):
         bus = can.Bus(bustype=self.bustype, channel=self.channel)  # type: ignore
@@ -412,12 +418,34 @@ class Canalyse:
             self.collect_noise(bus)
             self.collect_signal(bus)
         self.save_signals()
-        
 
     def show_signals(self):
         for msghash in self.signal:
             msg = self.signal[msghash]
             mdata = "".join(
+                [
+                    str(hex(d))[2:] if len(str(hex(d))) == 4 else "0" + str(hex(d))[2:]
+                    for d in msg.data
+                ]
+            )
+
+            print(str(hex(msg.arbitration_id)[2:]) + "#" + mdata)
+
+    def save_signals(self):
+        while True:
+            os.system("clear")
+            self.show_signals()
+            try:
+                filepath = input("---> ")
+                self.save_signals_as_file(filepath)
+            except:
+                pass
+
+    def save_signals_as_file(self, filepath):
+        with open(filepath, "w+") as file:
+            for msghash in self.signal:
+                msg = self.signal[msghash]
+                mdata = "".join(
                     [
                         str(hex(d))[2:]
                         if len(str(hex(d))) == 4
@@ -425,44 +453,17 @@ class Canalyse:
                         for d in msg.data
                     ]
                 )
-
-            print(str(hex(msg.arbitration_id)[2:])+'#'+mdata)
-
-    def save_signals(self):
-        while True:
-            os.system('clear')
-            self.show_signals()
-            try:
-                filepath = input('---> ')
-                self.save_signals_as_file(filepath)
-            except:
-                pass
-
-    def save_signals_as_file(self,filepath):
-        with open(filepath,'w+') as file:
-            for msghash in self.signal:
-                msg = self.signal[msghash]
-                mdata = "".join([
-                str(hex(d))[2:]
-                if len(str(hex(d))) == 4
-                else "0" + str(hex(d))[2:]
-                for d in msg.data])
                 timestamp = str(msg.timestamp)
                 if len(timestamp) < 17:
                     timestamp = "0" * (17 - len(timestamp)) + timestamp
                 timestamp = "(" + timestamp + ")"
                 m = [
-                        timestamp,
-                        self.channel,
-                        str(hex(msg.arbitration_id)[2:]) + "#" +
-                        mdata + "\n",
+                    timestamp,
+                    self.channel,
+                    str(hex(msg.arbitration_id)[2:]) + "#" + mdata + "\n",
                 ]
                 message = " ".join(m)
                 file.write(message)
-                
-        
-        
-            
 
     def __enter__(self):
         return self

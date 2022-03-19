@@ -19,7 +19,6 @@ class Interface:
         self.channel = self.menu["Settings"]["Communication channel"]
         self.bustype = self.menu["Settings"]["Communication Interface"]
 
-
     def header(self) -> None:
         print("")
         result = pf.figlet_format("CANalyse", font="slant")
@@ -73,8 +72,8 @@ class Interface:
                     self.path.append(option)
             except KeyboardInterrupt:
                 break
-            except Exception:
-                continue
+            except Exception as e:
+                raise e
 
     def execute(self, option: str) -> None:
         func = self.goto(self.path + [option])
