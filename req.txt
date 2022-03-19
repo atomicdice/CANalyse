@@ -1,4 +1,0 @@
-pandas
-rich
-pandasql
-keyboard
