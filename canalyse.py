@@ -438,10 +438,13 @@ class Canalyse:
             try:
                 filepath = input("---> ")
                 self.save_signals_as_file(filepath)
+                break
             except:
                 pass
 
     def save_signals_as_file(self, filepath):
+        if filepath.split('.')[-1] != 'log':
+            filepath += '.log'
         with open(filepath, "w+") as file:
             for msghash in self.signal:
                 msg = self.signal[msghash]
