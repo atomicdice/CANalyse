@@ -42,7 +42,7 @@ class Canalyse:
     def scan(self, channel, timeline):
         try:
             bus = can.Bus(bustype=self.bustype, channel=channel)  # type: ignore
-            data = pd.DataFrame(columns=["timestamp", "channel", "id", "data"])
+            cls = ["timestamp", "channel", "id", "data"]
             if int(timeline) != 0:
                 t_end = time.time() + int(timeline)
             else:
@@ -53,10 +53,27 @@ class Canalyse:
             while time.time() < t_end:
                 msg = bus.recv(1)
                 if msg is not None:
-                    msgs.append(msg)
+                    mdata = "".join(
+                        [
+                            str(hex(d))[2:]
+                            if len(str(hex(d))) == 4
+                            else "0" + str(hex(d))[2:]
+                            for d in msg.data
+                        ]
+                    )
+                    mrow = [msg.timestamp, msg.channel, str(hex(msg.arbitration_id)[2:]), mdata]
+                    msgs.append(dict((cls[a], mrow[a]) for a in range(4)))
+            return pd.DataFrame(msgs,columns=cls)
+        except Exception as e:
+            self.error(e)
 
-            for i in range(len(msgs)):
-                msg = msgs[i]
+    def read(self,filename):
+        if filename.split(".")[-1] == "csv":
+            return pd.read_csv(filename)
+        cls = ["timestamp", "channel", "id", "data"]
+        row_list = []
+        with can.LogReader(filename) as reader:
+            for msg in reader:  # type: ignore
                 mdata = "".join(
                     [
                         str(hex(d))[2:]
@@ -65,33 +82,9 @@ class Canalyse:
                         for d in msg.data
                     ]
                 )
-                data.at[data.shape[0]] = [
-                    msg.timestamp,
-                    msg.channel,
-                    str(hex(msg.arbitration_id)[2:]),
-                    mdata,
-                ]
-            return data
-        except Exception as e:
-            self.error(e)
-
-    def read(self, filename):
-        if filename.split(".")[-1] == "csv":
-            return pd.read_csv(filename)
-        with open(filename, "r+") as file:
-            log = file.readlines()
-            data = pd.DataFrame(columns=["timestamp", "channel", "id", "data"])
-            ids = []
-
-            for line in log:
-                try:
-                    res = re.split("#| ", line)
-                    res[0] = res[0].lstrip("(").rstrip(")")
-                    res[3] = res[3].strip("\n")
-                    data.at[data.shape[0]] = res
-                except Exception as e:
-                    self.error(e)
-        return data
+                mrow = [msg.timestamp,msg.channel,str(hex(msg.arbitration_id)[2:]),mdata]
+                row_list.append(dict((cls[a], mrow[a]) for a in range(4)))
+        return pd.DataFrame(row_list,columns=cls)
 
     def save(self, df, filename):
         extension = filename.split(".")[-1]
