@@ -1,19 +1,16 @@
 import os
-import pandas as pd
-import rich
 from rich.console import Console
-from rich.prompt import Prompt
 from canalyse import Canalyse
 import pyfiglet as pf
 import json
 import time
-import sys
 from telegram import Bot
 
 
 class Interface:
     def __init__(self, filename: str = "nav.json") -> None:
-        with open(filename) as file:
+        self.filename = filename
+        with open(self.filename) as file:
             self.menu = json.load(file)
         self.path: list[str] = []
         self.console = Console()
@@ -88,6 +85,25 @@ class Interface:
                 pass
         elif func == "smartscan":
             self.smartscan()
+
+        elif len(self.path) > 1:
+            if self.path[-1] == "Settings":
+                self.change_settings(option,func)
+    
+    def change_settings(self,option,func):
+        os.system("clear")
+        self.header()
+        print(f"{option} is set to : {func}")
+        value = input(f"Change {option} to (default): ")
+        if value != func and value != None:
+            self.menu["Settings"][option] = value
+            self.channel = self.menu["Settings"]["Communication channel"]
+            self.bustype = self.menu["Settings"]["Communication Interface"]
+            j = json.dumps(self.menu,indent=4)
+            with open(self.filename, "w+") as file:
+                file.write(j)
+
+
 
     def ide(self):
         os.system("clear")
