@@ -8,6 +8,7 @@ import pyfiglet as pf
 import json
 import time
 import sys
+from telegram import Bot
 
 
 class Interface:
@@ -80,8 +81,11 @@ class Interface:
         print(f"executes {func}")
         if func == "ide":
             self.ide()
-        elif func == "telegram":
-            self.telegram()
+        elif func == "telegram": 
+            try:
+                self.telegram()
+            except:
+                pass
         elif func == "smartscan":
             self.smartscan()
 
@@ -113,7 +117,73 @@ class Interface:
         pass
 
     def telegram(self):
-        print("under construction")
+        os.system("clear")
+        self.header()
+        apit = self.menu["Settings"]["API_Token"]
+        try:
+            bot = Bot(token=apit)
+        except:
+            if apit == "":
+                print("Set API Token in settings")
+            else:
+                print("Invalid API Token")
+            time.sleep(1)
+            return None
+
+        with Canalyse(self.channel, self.bustype) as cn:
+            history = []
+            msg = self.get_new_message(bot)
+            update_id = msg.update_id
+            chat_id = msg.message.chat_id
+            while True:
+                msg = self.get_new_message(bot, update_id)
+                update_id = msg.update_id
+                code = msg.message.text
+                chat_id = msg.message.chat_id
+                code = code.lower().strip()  # type: ignore
+                if code in ["close", "quit", "exit"]:
+                    bot.send_message(
+                        chat_id=chat_id, text="👋"
+                    )
+                    break
+                else:
+                    print("Message recieved : "+code)
+                    try:
+                        output = cn.repl(code)
+                        if output is not None:
+                            print("Output : "+str(output))
+                            bot.send_message(
+                                chat_id=chat_id, text=str(output)
+                            )
+                        elif cn.goterror:
+                            print("Output : "+"👎 ERROR")
+                            bot.send_message(
+                                chat_id=chat_id, text="👎 ERROR"+str(cn.errorreason)
+                            )
+                        else:
+                            print("Output : "+"👍")
+                            bot.send_message(
+                                chat_id=chat_id, text="👍"
+                            )
+
+                        history.append(code)
+                    except KeyboardInterrupt:
+                        break
+                    except Exception as e:
+                        bot.send_message(
+                            chat_id=chat_id, text="👎 ERROR : "+str(e)
+                        )
+
+    def get_new_message(self,bot, update_id=None):
+        while True:
+            msg = bot.get_updates()[-1]
+            try:
+                if msg.update_id != update_id:
+                    return msg
+            except KeyboardInterrupt:
+                bot.send_message(
+                    chat_id=msg.chat_id, text="Closed in terminal,bye.."
+                )
 
 
 if __name__ == "__main__":

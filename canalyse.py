@@ -1,11 +1,8 @@
-from distutils import extension
 import os
-from signal import signal
 import pandas as pd
 import can
 from can import Bus, BusState, Logger, LogReader, MessageSync
 import time
-import re
 import pandasql as ps
 import keyboard as kd
 
@@ -29,15 +26,17 @@ class Canalyse:
 
         self.history = []
         self.goterror = False
+        self.errorreason = ""
 
         self.noise = {}
         self.signal = {}
 
     def error(self, reason):
-        print(reason)
+        print("ERROR: "+reason)
         if not self.goterror:
             self.history.pop()
             self.goterror = True
+            self.errorreason = reason
 
     def scan(self, channel, timeline):
         try:
@@ -279,6 +278,8 @@ class Canalyse:
             "+" in token or "-" in token or "*" in token or "/" in token or "%" in token
         ):
             return eval(token, self.variables)
+        else:
+            self.error("Variable not defined")
 
     def do_split(self, code, element):
         dqsk = 0
