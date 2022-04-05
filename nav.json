@@ -4,8 +4,8 @@
     "Connect to Telegram": "telegram",
     "Manual": "manual",
     "Settings": {
-        "Communication channel": "vcan0",
-        "Communication Interface": "",
+        "Communication channel": "can0",
+        "Communication Interface": "socketcan",
         "API_Token": ""
     }
 }
