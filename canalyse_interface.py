@@ -75,7 +75,6 @@ class Interface:
 
     def execute(self, option: str) -> None:
         func = self.goto(self.path + [option])
-        print(f"executes {func}")
         if func == "ide":
             self.ide()
         elif func == "telegram": 
@@ -86,7 +85,7 @@ class Interface:
         elif func == "smartscan":
             self.smartscan()
 
-        elif len(self.path) > 1:
+        elif len(self.path) > 0:
             if self.path[-1] == "Settings":
                 self.change_settings(option,func)
     
