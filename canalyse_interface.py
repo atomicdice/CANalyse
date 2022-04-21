@@ -84,6 +84,8 @@ class Interface:
                 pass
         elif func == "smartscan":
             self.smartscan()
+        elif func == "manual":
+            self.manual()
 
         elif len(self.path) > 0:
             if self.path[-1] == "Settings":
@@ -102,8 +104,15 @@ class Interface:
             with open(self.filename, "w+") as file:
                 file.write(j)
 
-
-
+    def manual(self):
+        try:
+            os.system("clear")
+            self.header()
+            with open("manual.txt",'r+') as file:
+                print(file.read())
+        except:
+            pass
+        
     def ide(self):
         os.system("clear")
         self.header()
@@ -147,7 +156,6 @@ class Interface:
 
         with Canalyse(self.channel, self.bustype) as cn:
             cn.telegram = True
-
             history = []
             msg = self.get_new_message(bot)
             update_id = msg.update_id
