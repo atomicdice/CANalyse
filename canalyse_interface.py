@@ -162,6 +162,7 @@ class Interface:
             chat_id = msg.message.chat_id
             cn.bot = bot  # type: ignore
             while True:
+                print("hi")
                 msg = self.get_new_message(bot, update_id)
                 update_id = msg.update_id
                 code = msg.message.text
@@ -186,7 +187,7 @@ class Interface:
                         elif cn.goterror:
                             print("Output : "+"👎 ERROR")
                             bot.send_message(
-                                chat_id=chat_id, text="👎 ERROR"+str(cn.errorreason)
+                                chat_id=chat_id, text="👎 ERROR: "+str(cn.errorreason)
                             )
                         else:
                             print("Output : "+"👍")
