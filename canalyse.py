@@ -437,7 +437,7 @@ class Canalyse:
                 ]
             )
 
-            print(str(hex(msg.arbitration_id)[2:]) + "#" + mdata)
+            print(str(hex(msg.arbitration_id)[2:]) + "#" + mdata,flush=True)
 
     def save_signals(self):
         while True:
@@ -445,6 +445,7 @@ class Canalyse:
             self.show_signals()
             try:
                 filepath = input("---> ")
+                filepath = 's'.join(filepath.split('s')[1:])
                 self.save_signals_as_file(filepath)
                 break
             except:
