@@ -109,7 +109,7 @@ class Interface:
             os.system("clear")
             self.header()
             with open("manual.txt",'r+') as file:
-                print(file.read())
+                input(file.read())
         except:
             pass
         
