@@ -22,12 +22,15 @@ class Canalyse:
             "import": ["projectpath"],
             "export": ["projectpath"],
             "run": ["projectpath"],
+            "download":["filename"]
         }
 
         self.history = []
         self.goterror = False
         self.errorreason = ""
-
+        self.telegram = False
+        self.bot = None
+        self.chat_id = 0
         self.noise = {}
         self.signal = {}
 
@@ -224,6 +227,15 @@ class Canalyse:
         except Exception as e:
             self.error(e)
 
+    def download(self,filename):
+        try:
+            if self.telegram:
+                self.bot.send_document(chat_id=self.chat_id, document=open(filename, "rb"))  # type: ignore
+            else:
+                self.error("This function can only be used in Telegram")
+        except Exception as e:
+            self.error(e)
+
     def isfloat(self, string: str):
         try:
             a = float(string)
@@ -258,6 +270,8 @@ class Canalyse:
             return self.export(self.evaluate(args[0]))
         elif func == "run" and self.check_func_args(func, args):
             return self.run(self.evaluate(args[0]))
+        elif func == "download" and self.check_func_args(func, args):
+            return self.download(self.evaluate(args[0]))    
         else:
             self.error(f"function {func} is not defined")
 

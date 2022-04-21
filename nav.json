@@ -4,7 +4,7 @@
     "Connect to Telegram": "telegram",
     "Manual": "manual",
     "Settings": {
-        "Communication channel": "can0",
+        "Communication channel": "",
         "Communication Interface": "socketcan",
         "API_Token": ""
     }

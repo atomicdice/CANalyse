@@ -146,15 +146,20 @@ class Interface:
             return None
 
         with Canalyse(self.channel, self.bustype) as cn:
+            cn.telegram = True
+
             history = []
             msg = self.get_new_message(bot)
             update_id = msg.update_id
             chat_id = msg.message.chat_id
+            cn.bot = bot  # type: ignore
             while True:
                 msg = self.get_new_message(bot, update_id)
                 update_id = msg.update_id
                 code = msg.message.text
                 chat_id = msg.message.chat_id
+                cn.chat_id = chat_id
+                
                 code = code.lower().strip()  # type: ignore
                 if code in ["close", "quit", "exit"]:
                     bot.send_message(
