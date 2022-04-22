@@ -359,6 +359,7 @@ class Canalyse:
         print(
             f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play"
         )
+        self.show_signals()
         while True:
             msg = bus.recv(1)
             if msg is None:
@@ -390,6 +391,7 @@ class Canalyse:
                     )
                     mssg = str(hex(msg.arbitration_id)[2:]) + "#" + mdata
                     self.playmsg(self.channel, mssg)
+                    time.sleep(0.01)
                 break
 
     def collect_signal(self, bus):
@@ -452,7 +454,9 @@ class Canalyse:
                 pass
 
     def save_signals_as_file(self, filepath):
-        if filepath.split('.')[-1] != 'log':
+        if filepath == "":
+            return
+        elif filepath.split('.')[-1] != 'log':
             filepath += '.log'
         with open(filepath, "w+") as file:
             for msghash in self.signal:
