@@ -40,10 +40,11 @@ class Canalyse:
             self.history.pop()
             self.goterror = True
             self.errorreason = reason
-
+#58854
     def scan(self, channel, timeline):
         try:
-            bus = can.Bus(bustype=self.bustype, channel=channel)  # type: ignore
+            bus = can.Bus(
+                bustype=self.bustype, channel=channel)  # type: ignore
             cls = ["timestamp", "channel", "id", "data"]
             if int(timeline) != 0:
                 t_end = time.time() + int(timeline)
@@ -53,7 +54,7 @@ class Canalyse:
             msgs = []
 
             while time.time() < t_end:
-                msg = bus.recv(1)
+                msg = bus.recv(timeout=1)
                 if msg is not None:
                     mdata = "".join(
                         [
@@ -357,28 +358,25 @@ class Canalyse:
     def collect_noise(self, bus):
         os.system("clear")
         print(
-            f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play"
+            f"Press Spacebar and start giving the signals\nPress 'S' to save\nPress 'p' to play\nPress 'q' to quit"
         )
         self.show_signals()
-        while True:
-            msg = bus.recv(1)
-            if msg is None:
-                continue
-            msghash = str(msg.arbitration_id) + "#" + str(msg.data)
-            self.noise[msghash] = msg
+        for msg in bus:
+            msghash = f"{msg.arbitration_id}#{msg.data}"
             if msghash in self.signal:
                 del self.signal[msghash]
                 os.system("clear")
                 print(
-                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play"
+                    f"Press Spacebar and start giving the signals\nPress 'S' to save\nPress 'p' to play\nPress 'q' to quit"
                 )
                 self.show_signals()
             if kd.is_pressed("space"):
                 break
-            if kd.is_pressed("s"):
+            elif kd.is_pressed("s"):
                 self.stop = True
+                self.savve = True
                 break
-            if kd.is_pressed("p"):
+            elif kd.is_pressed("p"):
                 for msghash in self.signal:
                     msg = self.signal[msghash]
                     mdata = "".join(
@@ -393,16 +391,20 @@ class Canalyse:
                     self.playmsg(self.channel, mssg)
                     time.sleep(0.01)
                 break
+            elif kd.is_pressed("q"):
+                self.stop = True
+                self.savve = False
+                break
+
 
     def collect_signal(self, bus):
         os.system("clear")
         print(f"Once you stop giving the signals press 'b'")
         signal_cahce = {}
-        while not self.stop:
-            msg = bus.recv(1)
-            if msg is None:
-                continue
-            msghash = str(msg.arbitration_id) + "#" + str(msg.data)
+        if self.stop:
+            return
+        for msg in bus:
+            msghash = f"{msg.arbitration_id}#{msg.data}"
             if msghash not in self.noise:
                 signal_cahce[msghash] = msg
             if kd.is_pressed("b"):
@@ -416,18 +418,21 @@ class Canalyse:
                     self.signal = filterr
                 os.system("clear")
                 print(
-                    f"Press Spacebar and start giving the signals or press 'S' to save or press 'p' to play"
+                    f"Press Spacebar and start giving the signals\nPress 'S' to save\nPress 'p' to play\nPress 'q' to quit"
                 )
                 self.show_signals()
                 break
 
     def smartscan(self):
-        bus = can.Bus(bustype=self.bustype, channel=self.channel)  # type: ignore
+        bus = can.ThreadSafeBus(bustype=self.bustype,
+                                channel=self.channel)
         self.stop = False
+        self.savve = False
         while not self.stop:
             self.collect_noise(bus)
             self.collect_signal(bus)
-        self.save_signals()
+        if self.savve:
+            self.save_signals()
 
     def show_signals(self):
         for msghash in self.signal:
@@ -439,7 +444,8 @@ class Canalyse:
                 ]
             )
 
-            print(str(hex(msg.arbitration_id)[2:]) + "#" + mdata,flush=True)
+            print(
+                f"{hex(msg.arbitration_id)[2:]}#{mdata}", flush=True)
 
     def save_signals(self):
         while True:
