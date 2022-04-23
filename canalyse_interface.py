@@ -70,8 +70,8 @@ class Interface:
                     self.path.append(option)
             except KeyboardInterrupt:
                 break
-            except Exception:
-                continue
+            except Exception as e:
+                raise e
 
     def execute(self, option: str) -> None:
         func = self.goto(self.path + [option])
@@ -96,7 +96,7 @@ class Interface:
         self.header()
         print(f"{option} is set to : {func}")
         value = input(f"Change {option} to (default): ")
-        if value != func and value != None:
+        if value != func and value != None and value != "":
             self.menu["Settings"][option] = value
             self.channel = self.menu["Settings"]["Communication channel"]
             self.bustype = self.menu["Settings"]["Communication Interface"]
