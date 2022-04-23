@@ -70,8 +70,8 @@ class Interface:
                     self.path.append(option)
             except KeyboardInterrupt:
                 break
-            except Exception as e:
-                raise e
+            except Exception:
+                continue
 
     def execute(self, option: str) -> None:
         func = self.goto(self.path + [option])
