@@ -52,7 +52,7 @@ class Interface:
 
     def display(self) -> None:
         while True:
-            os.system("clear")
+            print("\033c", end="")
             self.header()
             self.page()
             self.footer()
@@ -70,8 +70,8 @@ class Interface:
                     self.path.append(option)
             except KeyboardInterrupt:
                 break
-            except Exception as e:
-                raise e
+            except Exception:
+                continue
 
     def execute(self, option: str) -> None:
         func = self.goto(self.path + [option])
@@ -92,7 +92,8 @@ class Interface:
                 self.change_settings(option,func)
     
     def change_settings(self,option,func):
-        os.system("clear")
+        print("\033c", end="")
+        #print("\033c", end="")
         self.header()
         print(f"{option} is set to : {func}")
         value = input(f"Change {option} to (default): ")
@@ -106,7 +107,8 @@ class Interface:
 
     def manual(self):
         try:
-            os.system("clear")
+            print("\033c", end="")
+            #print("\033c", end="")
             self.header()
             with open("manual.txt",'r+') as file:
                 input(file.read())
@@ -114,7 +116,7 @@ class Interface:
             pass
         
     def ide(self):
-        os.system("clear")
+        print("\033c", end="")
         self.header()
         with Canalyse(self.channel, self.bustype) as cn:
             history = []
@@ -135,13 +137,13 @@ class Interface:
                         print(e)
 
     def smartscan(self):
-        os.system("clear")
+        print("\033c", end="")
         with Canalyse(self.channel, self.bustype) as cn:
             cn.smartscan()
         pass
 
     def telegram(self):
-        os.system("clear")
+        print("\033c", end="")
         self.header()
         apit = self.menu["Settings"]["API_Token"]
         try:

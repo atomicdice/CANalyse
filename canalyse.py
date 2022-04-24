@@ -31,7 +31,7 @@ class Canalyse:
         self.telegram = False
         self.bot = None
         self.chat_id = 0
-        self.noise = {}
+        self.noise = set()
         self.signal = {}
 
     def error(self, reason):
@@ -356,20 +356,17 @@ class Canalyse:
             return self.evaluate(code)
 
     def collect_noise(self, bus):
-        os.system("clear")
-        print(
-            f"Press Spacebar and start giving the signals\nPress 'S' to save\nPress 'p' to play\nPress 'q' to quit"
-        )
         self.show_signals()
+        s = 0
         for msg in bus:
+            s+=1
             msghash = f"{msg.arbitration_id}#{msg.data}"
+            self.noise.add(msghash)
             if msghash in self.signal:
                 del self.signal[msghash]
-                os.system("clear")
-                print(
-                    f"Press Spacebar and start giving the signals\nPress 'S' to save\nPress 'p' to play\nPress 'q' to quit"
-                )
+            if s%100 == 0:
                 self.show_signals()
+
             if kd.is_pressed("space"):
                 break
             elif kd.is_pressed("s"):
@@ -398,30 +395,30 @@ class Canalyse:
 
 
     def collect_signal(self, bus):
-        os.system("clear")
-        print(f"Once you stop giving the signals press 'b'")
+        print(f"\033cOnce you stop giving the signals press 'b'")
         signal_cahce = {}
         if self.stop:
             return
         for msg in bus:
             msghash = f"{msg.arbitration_id}#{msg.data}"
-            if msghash not in self.noise:
-                signal_cahce[msghash] = msg
-            if kd.is_pressed("b"):
-                if self.signal == {}:
-                    self.signal = signal_cahce
-                else:
-                    filterr = {}
-                    for msghash in self.signal:
-                        if msghash in signal_cahce:
-                            filterr[msghash] = self.signal[msghash]
-                    self.signal = filterr
-                os.system("clear")
-                print(
-                    f"Press Spacebar and start giving the signals\nPress 'S' to save\nPress 'p' to play\nPress 'q' to quit"
-                )
-                self.show_signals()
+            signal_cahce[msghash] = msg
+            if kd.is_pressed('b'):
                 break
+        msghashes = list(signal_cahce.keys())
+        for msghash in msghashes:
+            if msghash in self.noise:
+                del signal_cahce[msghash]
+        if self.signal == {}:
+            self.signal = signal_cahce
+        else:
+            filterr = {}
+            for msghash in self.signal:
+                if msghash in signal_cahce:
+                    filterr[msghash] = self.signal[msghash]
+            self.signal = filterr
+        
+        self.show_signals()
+                
 
     def smartscan(self):
         bus = can.ThreadSafeBus(bustype=self.bustype,
@@ -435,21 +432,23 @@ class Canalyse:
             self.save_signals()
 
     def show_signals(self):
-        for msghash in self.signal:
-            msg = self.signal[msghash]
+        print(
+            f"\033cPress Spacebar and start giving the signals\nPress 'S' to save\nPress 'p' to play\nPress 'q' to quit\nNumber of messages : {len(self.signal)}"
+        )
+        msgs = self.signal.values()
+        for msg in msgs:
             mdata = "".join(
                 [
-                    str(hex(d))[2:] if len(str(hex(d))) == 4 else "0" + str(hex(d))[2:]
+                    str(hex(d))[2:] if len(str(hex(d))) == 4 else f"0{str(hex(d))[2:]}"
                     for d in msg.data
                 ]
             )
-
             print(
                 f"{hex(msg.arbitration_id)[2:]}#{mdata}", flush=True)
 
     def save_signals(self):
         while True:
-            os.system("clear")
+            print("\033c", end="")
             self.show_signals()
             try:
                 filepath = input("---> ")

@@ -6,6 +6,6 @@
     "Settings": {
         "Communication channel": "vcan0",
         "Communication Interface": "socketcan",
-        "API_Token": ""
+        "API_Token": "3"
     }
 }
