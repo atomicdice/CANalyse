@@ -386,7 +386,6 @@ class Canalyse:
                     )
                     mssg = str(hex(msg.arbitration_id)[2:]) + "#" + mdata
                     self.playmsg(self.channel, mssg)
-                    time.sleep(0.01)
                 break
             elif kd.is_pressed("q"):
                 self.stop = True
@@ -397,32 +396,50 @@ class Canalyse:
     def collect_signal(self, bus):
         print(f"\033cOnce you stop giving the signals press 'b'")
         signal_cahce = {}
+        sigset = set()
         if self.stop:
             return
-        for msg in bus:
-            msghash = f"{msg.arbitration_id}#{msg.data}"
-            signal_cahce[msghash] = msg
-            if kd.is_pressed('b'):
-                break
-        msghashes = list(signal_cahce.keys())
-        for msghash in msghashes:
-            if msghash in self.noise:
-                del signal_cahce[msghash]
+        elif self.signal == {}:
+            for msg in bus:
+                msghash = f"{msg.arbitration_id}#{msg.data}"
+                signal_cahce[msghash] = msg
+                if kd.is_pressed('b'):
+                    break
+        else:
+            for msg in bus:
+                msghash = f"{msg.arbitration_id}#{msg.data}"
+                sigset.add(msghash)
+                if kd.is_pressed('b'):
+                    break
         if self.signal == {}:
+            msghashes = list(signal_cahce.keys())
+            for msghash in msghashes:
+                if msghash in self.noise:
+                    del signal_cahce[msghash]
+                    
             self.signal = signal_cahce
         else:
-            filterr = {}
+            
+            sigche = {}
+            for msghash in sigset:
+                
+                if msghash not in self.signal:
+                    self.noise.add(msghash)
+                if msghash in self.noise and msghash in self.signal:
+                    del self.signal[msghash]
+                elif msghash in self.signal:
+                    sigche[msghash] = self.signal[msghash]
             for msghash in self.signal:
-                if msghash in signal_cahce:
-                    filterr[msghash] = self.signal[msghash]
-            self.signal = filterr
-        
+                if msghash not in sigche:
+                    self.noise.add(msghash)
+            self.signal = sigche
+            
         self.show_signals()
                 
 
     def smartscan(self):
-        bus = can.ThreadSafeBus(bustype=self.bustype,
-                                channel=self.channel)
+        bus = can.Bus(bustype=self.bustype,
+                              channel=self.channel)  # type: ignore
         self.stop = False
         self.savve = False
         while not self.stop:
